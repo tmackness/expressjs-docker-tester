@@ -96,8 +96,9 @@ app.get("/", (req, res) => {
     res.json({
       consul: result,
       hostname,
+      // interfaces,
       dockerHost: process.env.DOCKER_HOST,
-      containerIP: interfaces.eth1[0].address
+      containerIP: interfaces.eth2[0].address
     });
   });
 });
@@ -128,7 +129,13 @@ app.get("/error", async (req, res, next) => {
     throw new Error("Ahh error");
   } catch (error) {
     // tag error
-    apm.addTags({ UserId: 100 });
+    apm.addTags({ info: "some valuable data" });
+    // add context
+    apm.setUserContext({
+      id: 100
+      // username: "username",
+      // email: "fake@fake.com"
+    });
     next(error);
   }
 });
