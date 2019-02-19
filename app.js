@@ -1,20 +1,22 @@
 /**
  * Packages
  */
-// Add this to the VERY top of the first file loaded in your app
-// https://www.elastic.co/guide/en/apm/agent/nodejs/current/express.html
-const apm = require("elastic-apm-node").start({
-  // Override service name from package.json
-  // Allowed characters: a-z, A-Z, 0-9, -, _, and space
-  serviceName: process.env.ELASTIC_APM_SERVICE_NAME || "ExpressJS-API",
+const apmOptions = require("./config/apm");
+const apm = require("elastic-apm-node");
 
-  // Use if APM Server requires a token
-  // secretToken: process.env.ELASTIC_APM_SECRET_TOKEN,
-
+if (process.env.NODE_ENV === "production") {
   // Set custom APM Server URL (default: http://localhost:8200)
-  serverUrl: process.env.ELASTIC_APM_SERVER_URL || "http://apm-server:8200"
-});
-
+  // eslint-disable-next-line no-unused-expressions
+  (apmOptions.serverUrl =
+    process.env.ELASTIC_APM_SERVER_URL || "http://apm-server:8200"),
+    apm.start(apmOptions);
+} else if (process.env.ELASTIC_APM_ENABLE === true) {
+  // local dev server
+  // eslint-disable-next-line no-unused-expressions
+  (apmOptions.serverUrl =
+    process.env.ELASTIC_APM_SERVER_URL || "http://localhost:8200"),
+    apm.start(apmOptions);
+}
 const express = require("express");
 const bodyParser = require("body-parser");
 const os = require("os");
@@ -38,7 +40,7 @@ const redis = new Redis({
   port: process.env.REDIS_PORT || 6379,
   // db: 0
   password: process.env.REDIS_PASS
-  // tls: { // in docker i think it is automatically connected through tls??? or at least consul connect?
+  // tls: {
   //   key: stringValueOfKeyFile,
   //   cert: stringValueOfCertFile,
   //   ca: [ stringValueOfCaCertFile ]
@@ -95,17 +97,12 @@ app.get("/", (req, res) => {
       consul: result,
       hostname,
       dockerHost: process.env.DOCKER_HOST,
-      interfaces,
       containerIP: interfaces.eth1[0].address
     });
   });
-
-  // res.send('hello from container IP: ' + ip + ' Network Interfaces: ' + interfaces)
 });
 
 app.get("/redis", async (req, res) => {
-  // console.log(req.query.key);
-
   // consul set/get
   const consulSet = await consul.kv.set("testKey", req.query.key);
   console.log(consulSet);
@@ -126,9 +123,14 @@ app.get("/redis", async (req, res) => {
 });
 
 // Elastic APM Error Test
-app.get("/error", async (req, res) => {
-  throw new Error("Ahh error");
-  console.log(`i'm a log...`);
+app.get("/error", async (req, res, next) => {
+  try {
+    throw new Error("Ahh error");
+  } catch (error) {
+    // tag error
+    apm.addTags({ UserId: 100 });
+    next(error);
+  }
 });
 
 /**
@@ -140,8 +142,9 @@ if (process.env.NODE_ENV === "development") {
   app.use(errorHandler());
 } else {
   app.use((err, req, res, next) => {
-    console.error(err);
     res.status(500).send("Server Error");
+    console.error(err);
+    apm.captureError(err);
   });
 }
 

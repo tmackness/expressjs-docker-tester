@@ -2,12 +2,17 @@
   "extends": ["airbnb-base", "plugin:prettier/recommended"],
   "rules": {
     "no-console": 0,
-    "no-unused-vars": 1
+    "no-unused-vars": 1,
+    "import/order": [
+      "error",
+      { "groups": ["builtin", ["external", "sibling", "parent"], "index"] }
+    ]
   },
   "parserOptions": {
     "ecmaVersion": 2017
   },
   "env": {
-    "es6": true
+    "es6": true,
+    "node": true
   }
 }
