@@ -7,15 +7,13 @@ const apm = require("elastic-apm-node");
 if (process.env.NODE_ENV === "production") {
   // Set custom APM Server URL (default: http://localhost:8200)
   // eslint-disable-next-line no-unused-expressions
-  (apmOptions.serverUrl =
-    process.env.ELASTIC_APM_SERVER_URL || "http://apm-server:8200"),
-    apm.start(apmOptions);
+  apmOptions.serverUrl = process.env.ELASTIC_APM_URL || "http://apm-server:8200"),
+  apm.start(apmOptions);
 } else if (process.env.ELASTIC_APM_ENABLE === true) {
   // local dev server
   // eslint-disable-next-line no-unused-expressions
-  (apmOptions.serverUrl =
-    process.env.ELASTIC_APM_SERVER_URL || "http://localhost:8200"),
-    apm.start(apmOptions);
+  apmOptions.serverUrl = process.env.ELASTIC_APM_URL || "http://localhost:8200",
+  apm.start(apmOptions);
 }
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -30,7 +28,9 @@ const chalk = require("chalk");
 const morgan = require("morgan");
 const Redis = require("ioredis");
 const consul = require("consul")({
-  host: process.env.DOCKER_HOST || "172.17.0.1",
+  // host: process.env.DOCKER_HOST || "172.17.0.1", // if using consul on host
+  host: process.env.DOCKER_HOST || "consul-app", // if using consul in containers
+  token: process.env.CONSUL_HTTP_TOKEN || "",
   promisify: true
 });
 const config = require("./config");
